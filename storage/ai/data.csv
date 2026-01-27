@@ -1,0 +1,10 @@
+text,label
+"teacher explains well",positive
+"i understand easily",positive
+"this subject is interesting",positive
+"too hard and confusing",negative
+"teacher talks too fast",negative
+"i hate this topic",negative
+"okay only",neutral
+"normal class",neutral
+"not bad",neutral
