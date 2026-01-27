@@ -46,8 +46,6 @@ The main objectives of this project are:
 ## 👨‍🎓 Target Users
 
 This system is intended for:
-- Diploma students
-- Kolej Vokasional students
 - Beginner programmers
 - Students learning Laravel
 - Students curious about AI technology
@@ -55,6 +53,7 @@ This system is intended for:
 ---
 
 ## ✨ System Features
+
 
 ### 🤖 AI Chatbot
 - Students can type questions freely
