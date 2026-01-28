@@ -49,7 +49,11 @@ class ChatController extends Controller
             $python = base_path('.venv\\Scripts\\python.exe');
             $script = base_path('storage\\ai\\predict.py');
 
-            $process = new \Symfony\Component\Process\Process([$python, $script, $userMessage]);
+            $process = new \Symfony\Component\Process\Process([
+                $python,
+                '-c',
+                'import sys,asyncio; print(sys.executable); print("async ok")'
+            ]);
             $process->setTimeout(30);
             $process->run();
 
