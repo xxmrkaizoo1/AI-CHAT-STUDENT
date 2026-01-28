@@ -1,22 +1,26 @@
 <?php
-
-
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiController;
+
+// Route::get('/ai', [AiController::class, 'ask']);
 
 
-Route::get('/ask', function () {
-    $q = request('q', 'Explain Laravel in simple words');
-
-    $response = Http::timeout(300) // 5 minutes
-        ->post(env('OLLAMA_URL') . '/api/generate', [
+Route::get('/ai-test', function () {
+    $res = Http::withOptions(['force_ip_resolve' => 'v4'])
+        ->connectTimeout(10)
+        ->timeout(120)
+        ->asJson()
+        ->post(env('OLLAMA_URL').'/api/generate', [
             'model' => env('OLLAMA_MODEL'),
-            'prompt' => $q,
+            'prompt' => 'Say hi in one word',
             'stream' => false,
-            'num_predict' => 100, // shorter answer = faster
+            'options' => [
+                'num_predict' => 10, // VERY SMALL → fastest test
+            ],
         ]);
 
-    return $response->json()['response'] ?? 'No response';
+    return $res->json();
 });
 
 
