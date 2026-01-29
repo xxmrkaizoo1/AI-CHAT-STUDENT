@@ -18,8 +18,8 @@
 </head>
 <body>
 
-  <h2>🎓 Student AI Chatbot (My Own AI)</h2>
-  <div class="small">Type a message → your local AI will classify & reply</div>
+  <h2>🎓 Student AI Chatbot (Ollama)</h2>
+  <div class="small">Type a message → your local AI (Ollama) will reply</div>
 
   {{-- Chat history --}}
   <div id="chat">
@@ -85,9 +85,7 @@
         const data = await res.json();
         loading.remove();
 
-        // show label if exists
-        const label = data.label ? (" (" + escapeHtml(data.label) + ")") : "";
-        addBubble("<b>AI" + label + ":</b> " + escapeHtml(data.reply ?? "Error"), "ai");
+        addBubble("<b>AI:</b> " + escapeHtml(data.reply ?? "Error"), "ai");
 
       } catch (err) {
         loading.remove();

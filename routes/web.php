@@ -6,22 +6,31 @@ use App\Http\Controllers\AiController;
 // Route::get('/ai', [AiController::class, 'ask']);
 
 
+<?php
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AiController;
+
+// Route::get('/ai', [AiController::class, 'ask']);
+
+
 Route::get('/ai-test', function () {
     $res = Http::withOptions(['force_ip_resolve' => 'v4'])
-        ->connectTimeout( 30)
+        ->connectTimeout( 100)
         ->timeout(120)
         ->asJson()
         ->post(env('OLLAMA_URL').'/api/generate', [
             'model' => env('OLLAMA_MODEL'),
-            'prompt' => 'can u explain what is oop ?',
+            'prompt' => 'can u  speak  100 words ',
             'stream' => false,
             'options' => [
-                'num_predict' => 30, // VERY SMALL → fastest test
+                'num_predict' => 100, // VERY SMALL → fastest test
             ],
         ]);
 
     return $res->json();
 });
+
 
 
 
