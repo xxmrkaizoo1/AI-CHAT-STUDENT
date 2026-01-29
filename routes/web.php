@@ -2,16 +2,12 @@
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AiController;
+use App\Http\Controllers\ChatController;
 
-// Route::get('/ai', [AiController::class, 'ask']);
 
-
-<?php
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AiController;
-
-// Route::get('/ai', [AiController::class, 'ask']);
+Route::get('/chat', [ChatController::class, 'index']);
+Route::post('/chat', [ChatController::class, 'send']);
+Route::post('/chat/clear', [ChatController::class, 'clear']);
 
 
 Route::get('/ai-test', function () {

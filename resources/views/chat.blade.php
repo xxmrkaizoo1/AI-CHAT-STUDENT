@@ -13,15 +13,15 @@
     .row{display:flex; gap:10px; margin-top:15px;}
     input{flex:1; padding:10px; border:1px solid #ccc; border-radius:10px;}
     button{padding:10px 14px; border:0; border-radius:10px; cursor:pointer;}
+    button:disabled{opacity:0.6; cursor:not-allowed;}
     .small{font-size:12px; opacity:.7;}
   </style>
 </head>
 <body>
 
-  <h2>🎓 Student AI Chatbot (Ollama)</h2>
-  <div class="small">Type a message → your local AI (Ollama) will reply</div>
+  <h2>🎓 Student AI Chatbot (Ollama Streaming)</h2>
+  <div class="small">AI will type the answer live (word-by-word)</div>
 
-  {{-- Chat history --}}
   <div id="chat">
     @foreach($messages as $m)
       <div class="box {{ $m->role === 'user' ? 'me' : 'ai' }}">
@@ -31,13 +31,11 @@
     @endforeach
   </div>
 
-  {{-- Input --}}
   <form id="form" class="row">
     <input id="msg" placeholder="Ask anything..." autocomplete="off" />
-    <button type="submit">Send</button>
+    <button id="sendBtn" type="submit">Send</button>
   </form>
 
-  {{-- Clear chat --}}
   <form method="POST" action="/chat/clear" style="margin-top:10px;">
     @csrf
     <button type="submit">Clear Chat</button>
@@ -47,6 +45,7 @@
     const chat = document.getElementById('chat');
     const form = document.getElementById('form');
     const msg = document.getElementById('msg');
+    const sendBtn = document.getElementById('sendBtn');
 
     function addBubble(text, cls){
       const div = document.createElement('div');
@@ -54,44 +53,8 @@
       div.innerHTML = text;
       chat.appendChild(div);
       window.scrollTo(0, document.body.scrollHeight);
+      return div;
     }
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const text = msg.value.trim();
-      if(!text) return;
-
-      // show user message
-      addBubble("<b>You:</b> " + escapeHtml(text), "me");
-      msg.value = "";
-
-      // loading bubble
-      const loading = document.createElement('div');
-      loading.className = 'box ai';
-      loading.innerHTML = "<b>AI:</b> typing...";
-      chat.appendChild(loading);
-
-      try {
-        const res = await fetch("/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
-          },
-          body: JSON.stringify({ message: text })
-        });
-
-        const data = await res.json();
-        loading.remove();
-
-        addBubble("<b>AI:</b> " + escapeHtml(data.reply ?? "Error"), "ai");
-
-      } catch (err) {
-        loading.remove();
-        addBubble("<b>AI:</b> Server error", "ai");
-      }
-    });
 
     function escapeHtml(str){
       return (str ?? "")
@@ -103,7 +66,59 @@
         .replaceAll("'", "&#039;");
     }
 
-    // auto scroll on load
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const text = msg.value.trim();
+      if(!text) return;
+
+      // 🔒 Disable input & button while generating
+      msg.disabled = true;
+      sendBtn.disabled = true;
+      sendBtn.innerText = "Generating...";
+
+      addBubble("<b>You:</b> " + escapeHtml(text), "me");
+      msg.value = "";
+
+      // Create empty AI bubble
+      const aiDiv = addBubble("<b>AI:</b> ", "ai");
+
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify({ message: text })
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let result = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          result += chunk;
+
+          aiDiv.innerHTML = "<b>AI:</b> " + escapeHtml(result);
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+
+      } catch (err) {
+        aiDiv.innerHTML = "<b>AI:</b> Server error";
+      } finally {
+        // 🔓 Enable input & button after finished
+        msg.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.innerText = "Send";
+        msg.focus();
+      }
+    });
+
     window.scrollTo(0, document.body.scrollHeight);
   </script>
 

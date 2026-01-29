@@ -9,7 +9,6 @@ use App\Models\ChatMessage;
 
 class ChatController extends Controller
 {
-    // Show chat page + history
     public function index(Request $request)
     {
         $sessionId = $request->session()->get('chat_session_id');
@@ -21,14 +20,13 @@ class ChatController extends Controller
         return view('chat', compact('messages'));
     }
 
-    // Send message to OLLAMA + save to DB
     public function send(Request $request)
     {
         $request->validate([
             'message' => 'required|string|max:2000',
         ]);
 
-        // 1) Get / create session id
+        // session id
         $sessionId = $request->session()->get('chat_session_id');
         if (!$sessionId) {
             $sessionId = (string) Str::uuid();
@@ -36,15 +34,76 @@ class ChatController extends Controller
         }
 
         $userMessage = $request->message;
+        $question = strtolower(trim($userMessage));
 
-        // 2) Save user message
+        // ✅ Save user message first (so greetings/blocked also saved)
         ChatMessage::create([
             'session_id' => $sessionId,
             'role'       => 'user',
             'content'    => $userMessage,
         ]);
 
-        // 3) Get last 10 messages for memory
+        // ✅ Greetings
+        $greetings = [
+            'hi','hello','hey','hey there','hye','yo',
+            'good morning','good afternoon','good evening','good night',
+            'hai','helo','assalamualaikum','salam','selamat pagi','selamat petang','selamat malam',
+            'hi teacher','hello teacher','hey sir','hey miss','hi ai','hello ai'
+        ];
+
+        foreach ($greetings as $greet) {
+            if ($question === $greet || str_starts_with($question, $greet)) {
+                $text =
+                    "👋 Hi! I’m your study assistant.\n\n" .
+                    "You can ask me about:\n" .
+                    "- Programming (PHP, Java, Laravel)\n" .
+                    "- Math & Statistics\n" .
+                    "- IT & Computer concepts\n" .
+                    "- Assignments & exams";
+
+                return $this->streamInstantText($text, $sessionId);
+            }
+        }
+
+        // ✅ HARD FILTER (block out-of-topic BEFORE Ollama)
+        $allowedKeywords = [
+            'study','exam','assignment','homework','revision',
+            'math','mathematics','algebra','calculus','statistics',
+            'programming','coding','code','java','php','laravel','javascript','html','css',
+            'database','sql','mysql','mariadb','algorithm','oop','computer','it','network'
+        ];
+
+        $blockedKeywords = [
+            'game','gaming','fortnite','pubg','valorant','minecraft',
+            'download','install crack','crack','cheat','hack',
+            'movie','song','music','anime','tiktok','instagram'
+        ];
+
+        foreach ($blockedKeywords as $word) {
+            if (str_contains($question, $word)) {
+                return $this->streamInstantText(
+                    "❌ Sorry, I can only help with study-related questions.",
+                    $sessionId
+                );
+            }
+        }
+
+        $allowed = false;
+        foreach ($allowedKeywords as $word) {
+            if (str_contains($question, $word)) {
+                $allowed = true;
+                break;
+            }
+        }
+
+        if (!$allowed) {
+            return $this->streamInstantText(
+                "❌ This chatbot is for learning only. Please ask a study-related question.",
+                $sessionId
+            );
+        }
+
+        // ✅ Build memory (last 10)
         $history = ChatMessage::where('session_id', $sessionId)
             ->orderBy('id', 'desc')
             ->take(10)
@@ -59,50 +118,108 @@ class ChatController extends Controller
             })
             ->toArray();
 
-        // 4) Tutor instruction (system)
+        // ✅ Tutor system rules
         array_unshift($history, [
             'role' => 'system',
-            'content' => 'You are a helpful tutor for students. Explain simply, step-by-step, with short examples.'
+            'content' =>
+                "You are a strict study assistant for students. " .
+                "ONLY answer questions related to education, programming, math, IT, or assignments. " .
+                "Explain simply, step-by-step, with short examples. " .
+                "If out of topic, refuse."
         ]);
 
         $ollamaUrl = rtrim(env('OLLAMA_URL', 'http://127.0.0.1:11434'), '/');
         $model     = env('OLLAMA_MODEL', 'llama3.2');
 
+        // ✅ STREAM from Ollama to browser
         try {
-            // 5) Call Ollama API
-            $response = Http::timeout(120)->post($ollamaUrl . '/api/chat', [
-                'model' => $model,
-                'messages' => $history,
-                'stream' => false,
-            ]);
+            $res = Http::withOptions(['stream' => true])
+                ->timeout(0)
+                ->post($ollamaUrl . '/api/chat', [
+                    'model' => $model,
+                    'messages' => $history,
+                    'stream' => true,
+                ]);
 
-            if (!$response->successful()) {
-                return response()->json([
-                    'reply' => 'Ollama error: ' . $response->status() . ' - ' . $response->body(),
-                ], 500);
+            if (!$res->successful()) {
+                return $this->streamInstantText(
+                    'Ollama error: ' . $res->status() . ' - ' . $res->body(),
+                    $sessionId
+                );
             }
 
-            $reply = $response->json('message.content') ?? 'No reply from Ollama.';
+            $psr = $res->toPsrResponse();
+            $body = $psr->getBody();
 
-            // 6) Save AI reply
-            ChatMessage::create([
-                'session_id' => $sessionId,
-                'role'       => 'assistant',
-                'content'    => $reply,
-            ]);
+            return response()->stream(function () use ($body, $sessionId) {
+                $buffer = '';
+                $fullReply = '';
 
-            return response()->json([
-                'reply' => $reply,
+                while (!$body->eof()) {
+                    $chunk = $body->read(1024);
+                    if ($chunk === '') continue;
+
+                    $buffer .= $chunk;
+
+                    // Ollama streams JSON per line
+                    while (($pos = strpos($buffer, "\n")) !== false) {
+                        $line = substr($buffer, 0, $pos);
+                        $buffer = substr($buffer, $pos + 1);
+
+                        $line = trim($line);
+                        if ($line === '') continue;
+
+                        $data = json_decode($line, true);
+                        if (!is_array($data)) continue;
+
+                        if (isset($data['message']['content'])) {
+                            $text = $data['message']['content'];
+                            $fullReply .= $text;
+
+                            echo $text; // stream to frontend
+                            @ob_flush();
+                            @flush();
+                        }
+                    }
+                }
+
+                // Save full assistant reply once finished
+                ChatMessage::create([
+                    'session_id' => $sessionId,
+                    'role'       => 'assistant',
+                    'content'    => trim($fullReply) ?: 'No reply from Ollama.',
+                ]);
+            }, 200, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+                'Cache-Control' => 'no-cache',
+                'X-Accel-Buffering' => 'no',
             ]);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'reply' => 'Server error: ' . $e->getMessage(),
-            ], 500);
+            return $this->streamInstantText('Server error: ' . $e->getMessage(), $sessionId);
         }
     }
 
-    // Clear chat history
+    // ✅ Helper: return a “stream-like” reply instantly + save it
+    private function streamInstantText(string $text, string $sessionId)
+    {
+        ChatMessage::create([
+            'session_id' => $sessionId,
+            'role'       => 'assistant',
+            'content'    => $text,
+        ]);
+
+        return response()->stream(function () use ($text) {
+            echo $text;
+            @ob_flush();
+            @flush();
+        }, 200, [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+            'Cache-Control' => 'no-cache',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
     public function clear(Request $request)
     {
         $sessionId = $request->session()->get('chat_session_id');
