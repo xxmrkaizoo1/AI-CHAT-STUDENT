@@ -8,15 +8,15 @@ use App\Http\Controllers\AiController;
 
 Route::get('/ai-test', function () {
     $res = Http::withOptions(['force_ip_resolve' => 'v4'])
-        ->connectTimeout(10)
+        ->connectTimeout(100)
         ->timeout(120)
         ->asJson()
         ->post(env('OLLAMA_URL').'/api/generate', [
             'model' => env('OLLAMA_MODEL'),
-            'prompt' => 'Say hi in one word',
+            'prompt' => 'can u explain what is oop ?',
             'stream' => false,
             'options' => [
-                'num_predict' => 10, // VERY SMALL → fastest test
+                'num_predict' => 100, // VERY SMALL → fastest test
             ],
         ]);
 
