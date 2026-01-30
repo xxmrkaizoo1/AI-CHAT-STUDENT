@@ -152,12 +152,6 @@ The chatbot is **strictly education-focused** and will politely refuse non-study
 ✔ Portfolio-ready project  
 ✔ Demonstrates modern AI UX  
 
----
-
-## 📸 Screenshots (Optional)
-_Add screenshots of Light Mode, Dark Mode, Streaming, Code Blocks_
-
----
 
 ## 📄 License
 This project is developed for **educational purposes**.
@@ -165,5 +159,5 @@ This project is developed for **educational purposes**.
 ---
 
 ## 🙌 Author
-Developed by **[Your Name]**  
+Developed by **xxmrkaizoo**  
 Student | Laravel Developer | AI Enthusiast
