@@ -133,6 +133,28 @@
             color: #888;
             cursor: pointer;
         }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            animation: blink 1s infinite;
+            font-weight: bold;
+
+        }
+
+        @keyframes blink {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -171,6 +193,7 @@
         const stopBtn = document.getElementById('stopBtn');
 
         let controller = null; // AbortController
+        const cursor = '<span class="cursor">|</span>';
 
         function addBubble(text, cls) {
             const div = document.createElement('div');
@@ -220,9 +243,10 @@
             return s;
         }
 
+        // ⛔ STOP BUTTON
         stopBtn.addEventListener('click', () => {
             if (controller) {
-                controller.abort(); // ⛔ stop generation
+                controller.abort();
                 controller = null;
             }
         });
@@ -245,6 +269,7 @@
             const aiDiv = addBubble("", "ai");
 
             controller = new AbortController();
+            let result = "";
 
             try {
                 const res = await fetch("/chat", {
@@ -261,7 +286,6 @@
 
                 const reader = res.body.getReader();
                 const decoder = new TextDecoder();
-                let result = "";
 
                 while (true) {
                     const {
@@ -274,9 +298,10 @@
                         stream: true
                     });
 
-                    aiDiv.innerHTML = renderMarkdownSafe(result);
+                    // ✨ show cursor while typing
+                    aiDiv.innerHTML = renderMarkdownSafe(result) + cursor;
 
-                    // 🎨 apply syntax highlighting
+                    // 🎨 syntax highlighting
                     aiDiv.querySelectorAll('pre code').forEach(block => {
                         hljs.highlightElement(block);
                     });
@@ -291,6 +316,14 @@
             } finally {
                 controller = null;
 
+                // ✅ remove cursor when finished / stopped
+                aiDiv.innerHTML = renderMarkdownSafe(result);
+
+                // 🎨 final highlight pass
+                aiDiv.querySelectorAll('pre code').forEach(block => {
+                    hljs.highlightElement(block);
+                });
+
                 // 🔓 unlock UI
                 msg.disabled = false;
                 sendBtn.disabled = false;
@@ -300,6 +333,7 @@
             }
         });
     </script>
+
 
 
 </body>
