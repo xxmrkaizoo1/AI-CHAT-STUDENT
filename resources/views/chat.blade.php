@@ -16,9 +16,10 @@
 
         body {
             font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-            background: linear-gradient(135deg, #eef2ff, #f8fafc);
+            background: linear-gradient(135deg, var(--bg-main), var(--bg-chat));
             margin: 0;
             padding: 0;
+            color: var(--text-main);
         }
 
         .app {
@@ -32,9 +33,10 @@
             flex-direction: column;
             height: 92vh;
             overflow: hidden;
+            background: var(--bg-card);
+
         }
 
-        /* Header */
         .header {
             padding: 18px 22px;
             border-bottom: 1px solid rgba(0, 0, 0, .05);
@@ -57,8 +59,9 @@
             padding: 24px;
             overflow-y: auto;
             background: linear-gradient(#f8fafc, #f1f5f9);
-        }
+            background: var(--bg-chat);
 
+        }
 
         .bubble {
             max-width: 72%;
@@ -84,7 +87,7 @@
         }
 
         .me {
-            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            background: var(--bg-bubble-me);
             color: white;
             margin-left: auto;
             border-bottom-right-radius: 6px;
@@ -95,15 +98,27 @@
             border: 1px solid #e5e7eb;
             margin-right: auto;
             border-bottom-left-radius: 6px;
+            background: var(--bg-bubble-ai);
+            border: 1px solid var(--border);
         }
 
-        /* Input area */
         .input-area {
             border-top: 1px solid #e5e7eb;
             padding: 14px;
             background: #ffffff;
             display: flex;
             gap: 10px;
+            align-items: center;
+        }
+
+        /* ✅ NEW: Level selector style */
+        #level {
+            padding: 14px 12px;
+            border-radius: 14px;
+            border: 1px solid #e5e7eb;
+            font-size: 13px;
+            background: #f8fafc;
+            color: #111827;
         }
 
         .input-area input {
@@ -124,7 +139,6 @@
             background: #f1f5f9;
         }
 
-        /* Buttons */
         .input-area button {
             padding: 14px 18px;
             border-radius: 14px;
@@ -132,6 +146,7 @@
             font-weight: 500;
             cursor: pointer;
             transition: all .2s ease;
+            white-space: nowrap;
         }
 
         #sendBtn {
@@ -149,12 +164,16 @@
             display: none;
         }
 
+        #regenBtn {
+            background: #e5e7eb;
+            color: #111827;
+        }
+
         button:disabled {
             opacity: .6;
             cursor: not-allowed;
         }
 
-        /* Clear */
         .clear {
             padding: 10px;
             text-align: center;
@@ -169,7 +188,6 @@
             cursor: pointer;
         }
 
-        /* Cursor */
         .cursor {
             display: inline-block;
             margin-left: 3px;
@@ -190,6 +208,41 @@
                 opacity: 1;
             }
         }
+
+        :root {
+            --bg-main: #f8fafc;
+            --bg-chat: #f1f5f9;
+            --bg-card: #ffffffcc;
+            --bg-bubble-ai: #ffffff;
+            --bg-bubble-me: linear-gradient(135deg, #6366f1, #4f46e5);
+            --text-main: #111827;
+            --border: #e5e7eb;
+        }
+
+        body.dark {
+            --bg-main: #0f172a;
+            --bg-chat: #020617;
+            --bg-card: #020617cc;
+            --bg-bubble-ai: #020617;
+            --bg-bubble-me: linear-gradient(135deg, #4338ca, #312e81);
+            --text-main: #e5e7eb;
+            --border: #1e293b;
+        }
+
+        #themeToggle {
+            background: rgba(255, 255, 255, .2);
+            border: none;
+            color: white;
+            font-size: 18px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all .2s ease;
+        }
+
+        #themeToggle:hover {
+            background: rgba(255, 255, 255, .35);
+        }
     </style>
 
 </head>
@@ -200,6 +253,7 @@
         <div class="header">
             <h2>🎓 Student AI Chatbot</h2>
             <small>Local AI • Ollama • Streaming</small>
+            <button id="themeToggle" title="Toggle theme">🌙</button>
         </div>
 
         <div id="chat">
@@ -211,9 +265,17 @@
         </div>
 
         <form id="form" class="input-area">
+            <!-- ✅ NEW: Level selector -->
+            <select id="level">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+            </select>
+
             <input id="msg" placeholder="Ask a study question..." autocomplete="off" />
             <button id="sendBtn" type="submit">Send</button>
             <button id="stopBtn" type="button">⛔ Stop</button>
+            <button id="regenBtn" type="button">🔁 Regenerate</button>
         </form>
 
         <form method="POST" action="/chat/clear" class="clear">
@@ -221,14 +283,18 @@
             <button type="submit">Clear chat</button>
         </form>
     </div>
+
     <script>
         const chat = document.getElementById('chat');
         const form = document.getElementById('form');
         const msg = document.getElementById('msg');
         const sendBtn = document.getElementById('sendBtn');
         const stopBtn = document.getElementById('stopBtn');
+        const regenBtn = document.getElementById('regenBtn');
+        const levelSelect = document.getElementById('level'); // ✅ NEW
 
-        let controller = null; // AbortController
+        let controller = null;
+        let lastUserMessage = null;
         const cursor = '<span class="cursor">|</span>';
 
         function addBubble(text, cls) {
@@ -249,11 +315,9 @@
                 .replaceAll("'", "&#039;");
         }
 
-        // ✅ MARKDOWN + CODE HIGHLIGHT (SAFE)
         function renderMarkdownSafe(text) {
             let s = escapeHtml(text);
 
-            // ```language\ncode```
             s = s.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
                 const l = (lang || "plaintext").toLowerCase();
                 return `
@@ -262,42 +326,44 @@
 </pre>`;
             });
 
-            // inline code `code`
             s = s.replace(/`([^`]+)`/g,
             `<code style="background:#f1f5f9;padding:2px 6px;border-radius:6px;">$1</code>`
         );
 
-        // bold **text**
         s = s.replace(/\*\*([^*]+)\*\*/g, `<b>$1</b>`);
-
-        // italic *text*
         s = s.replace(/\*([^*]+)\*/g, `<i>$1</i>`);
-
-            // new lines
             s = s.replace(/\n/g, "<br>");
 
             return s;
         }
 
-        // ⛔ STOP BUTTON
-        stopBtn.addEventListener('click', () => {
-            if (controller) {
-                controller.abort();
-                controller = null;
-            }
-        });
+        function applyHighlight(container) {
+            container.querySelectorAll('pre code').forEach(block => {
+                hljs.highlightElement(block);
+            });
+        }
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const text = msg.value.trim();
-            if (!text) return;
-
-            // 🔒 lock UI
+        function lockUI() {
             msg.disabled = true;
             sendBtn.disabled = true;
+            regenBtn.disabled = true;
+            levelSelect.disabled = true; // ✅ NEW: lock level while generating
             sendBtn.style.display = "none";
             stopBtn.style.display = "inline-block";
+        }
+
+        function unlockUI() {
+            msg.disabled = false;
+            sendBtn.disabled = false;
+            regenBtn.disabled = false;
+            levelSelect.disabled = false; // ✅ NEW
+            sendBtn.style.display = "inline-block";
+            stopBtn.style.display = "none";
+            msg.focus();
+        }
+
+        async function sendMessage(text) {
+            lockUI();
 
             addBubble(renderMarkdownSafe(text), "me");
             msg.value = "";
@@ -315,7 +381,8 @@
                         "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content
                     },
                     body: JSON.stringify({
-                        message: text
+                        message: text,
+                        level: levelSelect.value // ✅ NEW: send level
                     }),
                     signal: controller.signal
                 });
@@ -334,13 +401,8 @@
                         stream: true
                     });
 
-                    // ✨ show cursor while typing
                     aiDiv.innerHTML = renderMarkdownSafe(result) + cursor;
-
-                    // 🎨 syntax highlighting
-                    aiDiv.querySelectorAll('pre code').forEach(block => {
-                        hljs.highlightElement(block);
-                    });
+                    applyHighlight(aiDiv);
 
                     chat.scrollTop = chat.scrollHeight;
                 }
@@ -352,25 +414,51 @@
             } finally {
                 controller = null;
 
-                // ✅ remove cursor when finished / stopped
                 aiDiv.innerHTML = renderMarkdownSafe(result);
+                applyHighlight(aiDiv);
 
-                // 🎨 final highlight pass
-                aiDiv.querySelectorAll('pre code').forEach(block => {
-                    hljs.highlightElement(block);
-                });
-
-                // 🔓 unlock UI
-                msg.disabled = false;
-                sendBtn.disabled = false;
-                sendBtn.style.display = "inline-block";
-                stopBtn.style.display = "none";
-                msg.focus();
+                unlockUI();
             }
+        }
+
+        stopBtn.addEventListener('click', () => {
+            if (controller) controller.abort();
         });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = msg.value.trim();
+            if (!text) return;
+
+            lastUserMessage = text;
+            sendMessage(text);
+        });
+
+        regenBtn.addEventListener('click', () => {
+            if (!lastUserMessage) return;
+            if (controller) return;
+            sendMessage(lastUserMessage);
+        });
+
+        const themeToggle = document.getElementById('themeToggle');
+
+        // 🌙 Load saved theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark');
+            themeToggle.textContent = '☀️';
+        }
+
+        // 🌙 Toggle theme
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+
+            const isDark = document.body.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+
+            themeToggle.textContent = isDark ? '☀️' : '🌙';
+        });s
     </script>
-
-
 
 </body>
 

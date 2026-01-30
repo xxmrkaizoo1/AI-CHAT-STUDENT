@@ -26,6 +26,9 @@ class ChatController extends Controller
             'message' => 'required|string|max:2000',
         ]);
 
+        // 🎓 Student level (default beginner)
+        $level = $request->input('level', 'beginner');
+
         // session id
         $sessionId = $request->session()->get('chat_session_id');
         if (!$sessionId) {
@@ -36,14 +39,14 @@ class ChatController extends Controller
         $userMessage = $request->message;
         $question = strtolower(trim($userMessage));
 
-        // ✅ Save user message first (so greetings/blocked also saved)
+        // Save user message
         ChatMessage::create([
             'session_id' => $sessionId,
             'role'       => 'user',
             'content'    => $userMessage,
         ]);
 
-        // ✅ Greetings
+        /* ================= GREETINGS ================= */
         $greetings = [
             'hi',
             'hello',
@@ -51,12 +54,12 @@ class ChatController extends Controller
             'hey there',
             'hye',
             'yo',
+            'hai',
+            'helo',
             'good morning',
             'good afternoon',
             'good evening',
             'good night',
-            'hai',
-            'helo',
             'assalamualaikum',
             'salam',
             'selamat pagi',
@@ -68,152 +71,47 @@ class ChatController extends Controller
             'hey miss',
             'hi ai',
             'hello ai',
-            'hey ai',
+            'hey ai'
         ];
 
         foreach ($greetings as $greet) {
             if ($question === $greet || str_starts_with($question, $greet)) {
-                $text =
+                return $this->streamInstantText(
                     "👋 Hi! I’m your study assistant.\n\n" .
-                    "You can ask me about:\n" .
-                    "- Programming (PHP, Java, Laravel)\n" .
-                    "- Math & Statistics\n" .
-                    "- IT & Computer concepts\n" .
-                    "- Assignments & exams";
-
-                return $this->streamInstantText($text, $sessionId);
+                        "You can ask me about:\n" .
+                        "- Programming (PHP, Java, Laravel)\n" .
+                        "- Math & Statistics\n" .
+                        "- IT & Computer concepts\n" .
+                        "- Assignments & exams",
+                    $sessionId
+                );
             }
         }
 
-        // ✅ HARD FILTER (block out-of-topic BEFORE Ollama)
-        $CurseWords = [
-            'Bodoh',
+        /* ================= CURSE WORD FILTER ================= */
+        $curseWords = [
+            'bodoh',
             'stupid',
             'idiot',
             'dumb',
             'fool',
             'moron',
-            'silly',
-            'brainless',
-            'dimwit',
-            'imbecile',
-            'cretin',
-            'loser',
-            'twit',
-            'nitwit',
-            'blockhead',
-            'birdbrain',
-            'dunce',
-            'ignoramus',
-            'halfwit',
-            'simpleton',
-            'thickhead',
             'asshole',
             'bastard',
             'damn',
             'crap'
-
-
-
         ];
 
-        $allowedKeywords = [
-            'study',
-            'exam',
-            'assignment',
-            'homework',
-            'revision',
-            'math',
-            'mathematics',
-            'algebra',
-            'calculus',
-            'statistics',
-            'programming',
-            'coding',
-            'code',
-            'java',
-            'php',
-            'laravel',
-            'javascript',
-            'html',
-            'css',
-            'database',
-            'sql',
-            'mysql',
-            'mariadb',
-            'algorithm',
-            'oop',
-            'computer',
-            'it',
-            'network',
-            'software',
-            'hardware',
-            'data structure',
-            'function',
-            'variable',
-            'loop',
-            'array',
-            'string',
-            'integer',
-            'float',
-            'boolean',
-            'conditional',
-            'array',
-            'object',
-            'class',
-            'method',
-            'debugging',
-            'development',
-            'framework',
-            'api',
-            'version control',
-            'git',
-            'github',
-            'problem solving',
-            'logic',
-            'flowchart',
-            'pseudocode',
-            'binary',
-            'hexadecimal',
-            'compiler',
-            'interpreter',
-            'syntax',
-            'program',
-            'software engineering',
-            'operating system',
-            'cloud computing',
-            'cybersecurity',
-            'artificial intelligence',
-            'machine learning',
-            'data science',
-            'computer vision',
-            'natural language processing',
-            'deep learning',
-            'neural network',
-            'big data',
-            'data analysis',
-            'data visualization',
-            'statistics',
-            'probability',
-            'linear algebra',
-            'discrete mathematics',
-            'calculus',
-            'geometry',
-            'trigonometry',
-            'number theory',
-            'combinatorics',
-            'graph theory',
-            'set theory',
-            'logic',
-            'cryptography',
-            'information theory',
-            'automata theory',
-            'computational theory',
-            'explain'
+        foreach ($curseWords as $word) {
+            if (str_contains($question, $word)) {
+                return $this->streamInstantText(
+                    "❌ Please avoid using inappropriate language. This chatbot is for learning.",
+                    $sessionId
+                );
+            }
+        }
 
-
-        ];
-
+        /* ================= BLOCKED TOPICS ================= */
         $blockedKeywords = [
             'game',
             'gaming',
@@ -222,7 +120,6 @@ class ChatController extends Controller
             'valorant',
             'minecraft',
             'download',
-            'install crack',
             'crack',
             'cheat',
             'hack',
@@ -238,7 +135,6 @@ class ChatController extends Controller
             'netflix',
             'spotify',
             'torrent'
-
         ];
 
         foreach ($blockedKeywords as $word) {
@@ -250,16 +146,50 @@ class ChatController extends Controller
             }
         }
 
-        foreach ($CurseWords as $word) {
-            if (str_contains($question, strtolower($word))) {
-                return $this->streamInstantText(
-                    "❌ Please avoid using inappropriate language. Let's keep our conversation respectful and focused on learning.",
-                    "❌ Else will get Auto Report ! please behave yourself ",
-                    $sessionId
-
-                );
-            }
-        }
+        /* ================= ALLOWED TOPICS ================= */
+        $allowedKeywords = [
+            'study',
+            'exam',
+            'assignment',
+            'homework',
+            'revision',
+            'math',
+            'mathematics',
+            'algebra',
+            'calculus',
+            'statistics',
+            'programming',
+            'coding',
+            'code',
+            'php',
+            'java',
+            'laravel',
+            'javascript',
+            'html',
+            'css',
+            'sql',
+            'mysql',
+            'database',
+            'oop',
+            'class',
+            'object',
+            'function',
+            'variable',
+            'loop',
+            'array',
+            'computer',
+            'it',
+            'network',
+            'software',
+            'hardware',
+            'algorithm',
+            'data',
+            'ai',
+            'machine learning',
+            'data science',
+            'explain',
+            'example'
+        ];
 
         $allowed = false;
         foreach ($allowedKeywords as $word) {
@@ -276,7 +206,7 @@ class ChatController extends Controller
             );
         }
 
-        // ✅ Build memory (last 10)
+        /* ================= MEMORY (LAST 10) ================= */
         $history = ChatMessage::where('session_id', $sessionId)
             ->orderBy('id', 'desc')
             ->take(10)
@@ -291,22 +221,27 @@ class ChatController extends Controller
             })
             ->toArray();
 
-        // ✅ Tutor system rules
+        /* ================= LEVEL PROMPT ================= */
+        $levelPrompt = match ($level) {
+            'beginner' => "Explain very simply, step-by-step, using easy words and simple examples.",
+            'intermediate' => "Explain clearly with some technical terms and examples.",
+            'advanced' => "Explain in detail using technical language, theory, and best practices.",
+            default => "Explain simply."
+        };
+
         array_unshift($history, [
             'role' => 'system',
             'content' =>
-            "You are a strict study assistant for students. " .
-                "ONLY answer questions related to education, programming, math, IT, or assignments. " .
-                "Explain simply, step-by-step, with short examples. " .
-                "If out of topic, refuse.",
-            "I only Able talk about study related  topics."
-
+            "You are a strict study assistant. " .
+                "ONLY answer education-related questions. " .
+                $levelPrompt . " " .
+                "If out of topic, politely refuse."
         ]);
 
+        /* ================= OLLAMA STREAM ================= */
         $ollamaUrl = rtrim(env('OLLAMA_URL', 'http://127.0.0.1:11434'), '/');
         $model     = env('OLLAMA_MODEL', 'llama3.2');
 
-        // ✅ STREAM from Ollama to browser
         try {
             $res = Http::withOptions(['stream' => true])
                 ->timeout(0)
@@ -318,7 +253,7 @@ class ChatController extends Controller
 
             if (!$res->successful()) {
                 return $this->streamInstantText(
-                    'Ollama error: ' . $res->status() . ' - ' . $res->body(),
+                    'Ollama error: ' . $res->status(),
                     $sessionId
                 );
             }
@@ -336,12 +271,10 @@ class ChatController extends Controller
 
                     $buffer .= $chunk;
 
-                    // Ollama streams JSON per line
                     while (($pos = strpos($buffer, "\n")) !== false) {
-                        $line = substr($buffer, 0, $pos);
+                        $line = trim(substr($buffer, 0, $pos));
                         $buffer = substr($buffer, $pos + 1);
 
-                        $line = trim($line);
                         if ($line === '') continue;
 
                         $data = json_decode($line, true);
@@ -351,14 +284,13 @@ class ChatController extends Controller
                             $text = $data['message']['content'];
                             $fullReply .= $text;
 
-                            echo $text; // stream to frontend
+                            echo $text;
                             @ob_flush();
                             @flush();
                         }
                     }
                 }
 
-                // Save full assistant reply once finished
                 ChatMessage::create([
                     'session_id' => $sessionId,
                     'role'       => 'assistant',
@@ -370,11 +302,14 @@ class ChatController extends Controller
                 'X-Accel-Buffering' => 'no',
             ]);
         } catch (\Exception $e) {
-            return $this->streamInstantText('Server error: ' . $e->getMessage(), $sessionId);
+            return $this->streamInstantText(
+                'Server error: ' . $e->getMessage(),
+                $sessionId
+            );
         }
     }
 
-    // ✅ Helper: return a “stream-like” reply instantly + save it
+    /* ================= INSTANT STREAM HELPER ================= */
     private function streamInstantText(string $text, string $sessionId)
     {
         ChatMessage::create([
