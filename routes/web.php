@@ -2,11 +2,19 @@
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ChatController;
-
+use App\Http\Controllers\TeacherChatController;
 
 Route::get('/chat', [ChatController::class, 'index']);
 Route::post('/chat', [ChatController::class, 'send']);
 Route::post('/chat/clear', [ChatController::class, 'clear']);
+
+
+
+
+Route::get('/teacher/chats', [TeacherChatController::class, 'index']);
+Route::get('/teacher/chats/{sessionId}', [TeacherChatController::class, 'show']);
+
+
 
 
 Route::get('/ai-test', function () {
