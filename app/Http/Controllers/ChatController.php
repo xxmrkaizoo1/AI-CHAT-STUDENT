@@ -114,6 +114,7 @@ class ChatController extends Controller
             'crap'
 
 
+
         ];
 
         $allowedKeywords = [
