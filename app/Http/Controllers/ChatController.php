@@ -45,10 +45,29 @@ class ChatController extends Controller
 
         // ✅ Greetings
         $greetings = [
-            'hi','hello','hey','hey there','hye','yo',
-            'good morning','good afternoon','good evening','good night',
-            'hai','helo','assalamualaikum','salam','selamat pagi','selamat petang','selamat malam',
-            'hi teacher','hello teacher','hey sir','hey miss','hi ai','hello ai'
+            'hi',
+            'hello',
+            'hey',
+            'hey there',
+            'hye',
+            'yo',
+            'good morning',
+            'good afternoon',
+            'good evening',
+            'good night',
+            'hai',
+            'helo',
+            'assalamualaikum',
+            'salam',
+            'selamat pagi',
+            'selamat petang',
+            'selamat malam',
+            'hi teacher',
+            'hello teacher',
+            'hey sir',
+            'hey miss',
+            'hi ai',
+            'hello ai'
         ];
 
         foreach ($greetings as $greet) {
@@ -66,23 +85,174 @@ class ChatController extends Controller
         }
 
         // ✅ HARD FILTER (block out-of-topic BEFORE Ollama)
+        $CurseWords = [
+            'Bodoh',
+            'stupid',
+            'idiot',
+            'dumb',
+            'fool',
+            'moron',
+            'silly',
+            'brainless',
+            'dimwit',
+            'imbecile',
+            'cretin',
+            'loser',
+            'twit',
+            'nitwit',
+            'blockhead',
+            'birdbrain',
+            'dunce',
+            'ignoramus',
+            'halfwit',
+            'simpleton',
+            'thickhead',
+            'asshole',
+            'bastard',
+            'damn',
+            'crap'
+
+
+        ];
+
+
+
         $allowedKeywords = [
-            'study','exam','assignment','homework','revision',
-            'math','mathematics','algebra','calculus','statistics',
-            'programming','coding','code','java','php','laravel','javascript','html','css',
-            'database','sql','mysql','mariadb','algorithm','oop','computer','it','network'
+            'study',
+            'exam',
+            'assignment',
+            'homework',
+            'revision',
+            'math',
+            'mathematics',
+            'algebra',
+            'calculus',
+            'statistics',
+            'programming',
+            'coding',
+            'code',
+            'java',
+            'php',
+            'laravel',
+            'javascript',
+            'html',
+            'css',
+            'database',
+            'sql',
+            'mysql',
+            'mariadb',
+            'algorithm',
+            'oop',
+            'computer',
+            'it',
+            'network',
+            'software',
+            'hardware',
+            'data structure',
+            'function',
+            'variable',
+            'loop',
+            'array',
+            'string',
+            'integer',
+            'float',
+            'boolean',
+            'conditional',
+            'array',
+            'object',
+            'class',
+            'method',
+            'debugging',
+            'development',
+            'framework',
+            'api',
+            'version control',
+            'git',
+            'github',
+            'problem solving',
+            'logic',
+            'flowchart',
+            'pseudocode',
+            'binary',
+            'hexadecimal',
+            'compiler',
+            'interpreter',
+            'syntax',
+            'program',
+            'software engineering',
+            'operating system',
+            'cloud computing',
+            'cybersecurity',
+            'artificial intelligence',
+            'machine learning',
+            'data science',
+            'computer vision',
+            'natural language processing',
+            'deep learning',
+            'neural network',
+            'big data',
+            'data analysis',
+            'data visualization',
+            'statistics',
+            'probability',
+            'linear algebra',
+            'discrete mathematics',
+            'calculus',
+            'geometry',
+            'trigonometry',
+            'number theory',
+            'combinatorics',
+            'graph theory',
+            'set theory',
+            'logic',
+            'cryptography',
+            'information theory' ,
+            'automata theory',
+            'computational theory',
+
+
         ];
 
         $blockedKeywords = [
-            'game','gaming','fortnite','pubg','valorant','minecraft',
-            'download','install crack','crack','cheat','hack',
-            'movie','song','music','anime','tiktok','instagram'
+            'game',
+            'gaming',
+            'fortnite',
+            'pubg',
+            'valorant',
+            'minecraft',
+            'download',
+            'install crack',
+            'crack',
+            'cheat',
+            'hack',
+            'movie',
+            'song',
+            'music',
+            'anime',
+            'tiktok',
+            'instagram',
+            'facebook',
+            'twitter',
+            'youtube',
+            'netflix',
+            'spotify',
+            'torrent'
+
         ];
 
         foreach ($blockedKeywords as $word) {
             if (str_contains($question, $word)) {
                 return $this->streamInstantText(
                     "❌ Sorry, I can only help with study-related questions.",
+                    $sessionId
+                );
+            }
+        }
+
+        foreach ($CurseWords as $word) {
+            if (str_contains($question, strtolower($word))) {
+                return $this->streamInstantText(
+                    "❌ Please avoid using inappropriate language. Let's keep our conversation respectful and focused on learning.",
                     $sessionId
                 );
             }
@@ -122,10 +292,12 @@ class ChatController extends Controller
         array_unshift($history, [
             'role' => 'system',
             'content' =>
-                "You are a strict study assistant for students. " .
+            "You are a strict study assistant for students. " .
                 "ONLY answer questions related to education, programming, math, IT, or assignments. " .
                 "Explain simply, step-by-step, with short examples. " .
-                "If out of topic, refuse."
+                "If out of topic, refuse.",
+            "I only Able talk about study related  topics."
+
         ]);
 
         $ollamaUrl = rtrim(env('OLLAMA_URL', 'http://127.0.0.1:11434'), '/');
@@ -194,7 +366,6 @@ class ChatController extends Controller
                 'Cache-Control' => 'no-cache',
                 'X-Accel-Buffering' => 'no',
             ]);
-
         } catch (\Exception $e) {
             return $this->streamInstantText('Server error: ' . $e->getMessage(), $sessionId);
         }
