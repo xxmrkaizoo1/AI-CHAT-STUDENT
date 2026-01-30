@@ -52,7 +52,6 @@
             opacity: .85;
         }
 
-        /* Chat area */
         #chat {
             flex: 1;
             padding: 24px;
@@ -60,7 +59,7 @@
             background: linear-gradient(#f8fafc, #f1f5f9);
         }
 
-        /* Chat bubbles */
+
         .bubble {
             max-width: 72%;
             padding: 14px 16px;
