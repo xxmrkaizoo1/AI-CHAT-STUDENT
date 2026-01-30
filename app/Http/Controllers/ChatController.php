@@ -206,9 +206,10 @@ class ChatController extends Controller
             'set theory',
             'logic',
             'cryptography',
-            'information theory' ,
+            'information theory',
             'automata theory',
             'computational theory',
+            'explain'
 
 
         ];
@@ -253,7 +254,9 @@ class ChatController extends Controller
             if (str_contains($question, strtolower($word))) {
                 return $this->streamInstantText(
                     "❌ Please avoid using inappropriate language. Let's keep our conversation respectful and focused on learning.",
+                    "❌ Else will get Auto Report ! please behave yourself ",
                     $sessionId
+
                 );
             }
         }
