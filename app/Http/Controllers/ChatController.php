@@ -134,7 +134,7 @@ class ChatController extends Controller
             'youtube',
             'netflix',
             'spotify',
-            'torrent'
+            'torrent',
         ];
 
         foreach ($blockedKeywords as $word) {
@@ -188,7 +188,23 @@ class ChatController extends Controller
             'machine learning',
             'data science',
             'explain',
-            'example'
+            'example',
+            'define',
+            'what is',
+            'how to',
+            'why',
+            'who',
+            'when',
+            'where',
+            'which',
+            'benefit',
+            'advantage',
+            'disadvantage',
+            'compare',
+            'difference',
+            'steps',
+            'methods',
+            'best practices'
         ];
 
         $allowed = false;

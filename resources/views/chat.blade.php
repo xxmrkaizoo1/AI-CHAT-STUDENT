@@ -1,6 +1,5 @@
 <!doctype html>
 <html>
-
 <head>
     <meta charset="utf-8">
     <title>Student AI Chat</title>
@@ -291,7 +290,7 @@
         const sendBtn = document.getElementById('sendBtn');
         const stopBtn = document.getElementById('stopBtn');
         const regenBtn = document.getElementById('regenBtn');
-        const levelSelect = document.getElementById('level'); // ✅ NEW
+        const levelSelect = document.getElementById('level'); // ✅ NEW: level selector
 
         let controller = null;
         let lastUserMessage = null;
