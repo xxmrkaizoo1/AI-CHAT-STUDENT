@@ -67,7 +67,8 @@ class ChatController extends Controller
             'hey sir',
             'hey miss',
             'hi ai',
-            'hello ai'
+            'hello ai',
+            'hey ai',
         ];
 
         foreach ($greetings as $greet) {
@@ -114,8 +115,6 @@ class ChatController extends Controller
 
 
         ];
-
-
 
         $allowedKeywords = [
             'study',
