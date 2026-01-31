@@ -153,6 +153,10 @@ class TeacherChatController extends Controller
             ->orderBy('id')
             ->get();
 
-        return view('teacher.session_show', compact('messages', 'sessionId'));
+
+
+
+            return view('teacher.sessions', compact('goodCount','badCount','blockedCount','total','sessions','q'));
+            // return view('teacher.session_show', compact('messages', 'sessionId'));
     }
 }

@@ -4,6 +4,8 @@
 <head>
     <meta charset="utf-8">
     <title>Teacher Dashboard - Sessions</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         body {
             font-family: system-ui, Arial;
@@ -83,6 +85,29 @@
             </form>
         </div>
 
+
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+
+            <div
+                style="flex:1;min-width:320px;padding:16px;border-radius:12px;background:#fff;border:1px solid #e5e7eb;">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <b>📊 Student Behaviour Chart</b>
+
+                    <select id="chartType" style="padding:6px 10px;border-radius:8px;border:1px solid #ddd">
+                        <option value="pie">Pie</option>
+                        <option value="bar">Bar</option>
+                    </select>
+                </div>
+
+                <div style="height:280px;margin-top:12px;">
+                    <canvas id="behaviourChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+
+
         <table>
             <thead>
                 <tr>
@@ -134,6 +159,61 @@
             {{ $sessions->links() }}
         </div>
     </div>
+
+<script>
+  const goodCount = {{ $goodCount }};
+  const badCount = {{ $badCount }};
+  const blockedCount = {{ $blockedCount }};
+
+  const ctx = document.getElementById('behaviourChart');
+  const selector = document.getElementById('chartType');
+
+  let chart = null;
+
+  function renderChart(type) {
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      type: type,
+      data: {
+        labels: ['Good', 'Bad Language', 'Blocked Topics'],
+        datasets: [{
+          label: 'Messages',
+          data: [goodCount, badCount, blockedCount],
+          backgroundColor: [
+            '#22c55e',
+            '#ef4444',
+            '#f59e0b'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: type === 'pie',
+            position: 'bottom'
+          }
+        },
+        scales: type === 'bar' ? {
+          y: { beginAtZero: true }
+        } : {}
+      }
+    });
+  }
+
+  // initial render
+  renderChart(selector.value);
+
+  // switch chart type
+  selector.addEventListener('change', () => {
+    renderChart(selector.value);
+  });
+</script>
+
+
+
 </body>
 
 </html>

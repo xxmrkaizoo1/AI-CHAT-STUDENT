@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>Teacher Dashboard - Session</title>
-  <style>
+
+
+ <style>
     body{font-family:system-ui,Arial;margin:20px;background:#f8fafc;}
     .box{max-width:900px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;}
     .msg{padding:12px;border-radius:12px;margin:10px 0;white-space:pre-wrap;}
