@@ -7,11 +7,120 @@ use App\Models\ChatMessage;
 
 class TeacherChatController extends Controller
 {
-    // Show sessions list
+    /* =========================
+       KEYWORDS
+    ========================== */
+
+    private function getBadKeywords()
+    {
+        return [
+            'bodoh',
+            'stupid',
+            'idiot',
+            'dumb',
+            'fool',
+            'moron',
+            'silly',
+            'brainless',
+            'dimwit',
+            'imbecile',
+            'cretin',
+            'loser',
+            'twit',
+            'nitwit',
+            'blockhead',
+            'birdbrain',
+            'dunce',
+            'ignoramus',
+            'halfwit',
+            'simpleton',
+            'thickhead',
+            'asshole',
+            'bastard',
+            'damn',
+            'crap'
+        ];
+    }
+
+    private function getBlockedKeywords()
+    {
+        return [
+            'game',
+            'gaming',
+            'valorant',
+            'pubg',
+            'minecraft',
+            'movie',
+            'song',
+            'music',
+            'anime',
+            'tiktok',
+            'instagram',
+            'facebook',
+            'twitter',
+            'youtube',
+            'netflix',
+            'spotify',
+            'download',
+            'crack',
+            'hack',
+            'cheat',
+            'torrent'
+        ];
+    }
+
+    /* =========================
+       DASHBOARD (STATISTICS)
+    ========================== */
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
 
+        // 🔹 Only student messages
+        $messages = ChatMessage::where('role', 'user')->get();
+
+        $badKeywords = $this->getBadKeywords();
+        $blockedKeywords = $this->getBlockedKeywords();
+
+        $goodCount = 0;
+        $badCount = 0;
+        $blockedCount = 0;
+
+        foreach ($messages as $m) {
+            $text = strtolower($m->content);
+
+            $isBad = false;
+            $isBlocked = false;
+
+            // ❌ bad language
+            foreach ($badKeywords as $word) {
+                if (str_contains($text, $word)) {
+                    $isBad = true;
+                    break;
+                }
+            }
+
+            // ⛔ blocked topics
+            foreach ($blockedKeywords as $word) {
+                if (str_contains($text, $word)) {
+                    $isBlocked = true;
+                    break;
+                }
+            }
+
+            if ($isBad) {
+                $badCount++;
+            } elseif ($isBlocked) {
+                $blockedCount++;
+            } else {
+                $goodCount++;
+            }
+        }
+
+        $total = $goodCount + $badCount + $blockedCount;
+
+        // 🔹 Chat sessions list
         $sessions = ChatMessage::query()
             ->when($q !== '', function ($query) use ($q) {
                 $query->where('content', 'like', "%{$q}%");
@@ -23,10 +132,21 @@ class TeacherChatController extends Controller
             ->orderByDesc('last_id')
             ->paginate(20);
 
-        return view('teacher.sessions', compact('sessions', 'q'));
+        // ✅ PASS ALL VARIABLES TO VIEW
+        return view('teacher.sessions', compact(
+            'sessions',
+            'q',
+            'goodCount',
+            'badCount',
+            'blockedCount',
+            'total'
+        ));
     }
 
-    // Show messages for one session
+    /* =========================
+       VIEW SINGLE SESSION
+    ========================== */
+
     public function show(string $sessionId)
     {
         $messages = ChatMessage::where('session_id', $sessionId)
