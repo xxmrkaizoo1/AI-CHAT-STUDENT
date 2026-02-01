@@ -251,7 +251,8 @@ class ChatController extends Controller
             "You are a strict study assistant. " .
                 "ONLY answer education-related questions. " .
                 $levelPrompt . " " .
-                "If out of topic, politely refuse."
+                "If out of topic, refuse. " .
+                "I only talk about study-related topics."
         ]);
 
         /* ================= OLLAMA STREAM ================= */

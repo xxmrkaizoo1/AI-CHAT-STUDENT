@@ -2,87 +2,106 @@
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\AiController;
 use App\Http\Controllers\ChatController;
-use App\Http\Controllers\TeacherChatController;
-use App\Http\Controllers\StudentDashboardController;
-use App\Http\Controllers\TeacherDashboardController;
 
-/*
-|--------------------------------------------------------------------------
-| Public / test routes
-|--------------------------------------------------------------------------
-*/
+
+Route::get('/chat', [ChatController::class, 'index']);
+Route::post('/chat', [ChatController::class, 'send']);
+Route::post('/chat/clear', [ChatController::class, 'clear']);
+
+Route::get('/', function () {
+    return view('dashboard');
+})->name('dashboard');
+
+Route::get('/dashboard', function () {
+    return view('dashboard');
+});
+
+Route::post('/login/student', function () {
+    session()->put('user_role', 'student');
+
+    return redirect('/student/session_show');
+})->name('login.student');
+
+Route::post('/login/teacher', function () {
+    session()->put('user_role', 'teacher');
+
+    return redirect('/teacher/session_show');
+})->name('login.teacher');
+
+Route::post('/logout', function () {
+    session()->forget('user_role');
+
+    return redirect('/');
+})->name('logout');
+
+Route::get('/student/session_show', function () {
+    if (session('user_role') !== 'student') {
+        return redirect('/');
+    }
+
+    return view('dashboards.student');
+})->name('student.session_show');
+
+Route::get('/teacher/session_show', function () {
+    if (session('user_role') !== 'teacher') {
+        return redirect('/');
+    }
+
+    return view('teacher.session_show');
+})->name('teacher.session_show');
+
 
 Route::get('/ai-test', function () {
     $res = Http::withOptions(['force_ip_resolve' => 'v4'])
         ->connectTimeout(100)
         ->timeout(120)
         ->asJson()
-        ->post(rtrim(env('OLLAMA_URL'), '/') . '/api/generate', [
+        ->post(env('OLLAMA_URL') . '/api/generate', [
             'model' => env('OLLAMA_MODEL'),
-            'prompt' => 'can u speak 100 words',
+            'prompt' => 'can u  speak  100 words ',
             'stream' => false,
             'options' => [
-                'num_predict' => 100, // fast test
+                'num_predict' => 100, // VERY SMALL → fastest test
             ],
         ]);
 
     return $res->json();
 });
 
-/*
-|--------------------------------------------------------------------------
-| Redirect after login (student vs teacher)
-|--------------------------------------------------------------------------
-| Make sure RouteServiceProvider::HOME = '/redirect'
-*/
-
-Route::get('/', function () {
-    // If not logged in, show landing dashboard (with login buttons)
-    return view('dashboard');
-});
 
 
 
 
-Route::get('/redirect', function () {
-    if (!auth()->check()) return redirect('/login');
+// use App\Http\Controllers\ChatController;
+// use Illuminate\Support\Facades\Route;
+// use Illuminate\Support\Facades\DB;
+// use Illuminate\Support\Facades\Http;
 
-    return auth()->user()->role === 'teacher'
-        ? redirect('/teacher/dashboard')
-        : redirect('/student/dashboard');
-})->middleware('auth');
+// Route::get('/chat', [ChatController::class, 'index']);
+// Route::post('/chat', [ChatController::class, 'send']);
 
-/*
-|--------------------------------------------------------------------------
-| Student routes (auth + role student)
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'role:student'])->group(function () {
 
-    // Student dashboard
-    Route::get('/student/dashboard', [StudentDashboardController::class, 'index'])
-        ->name('student.dashboard');
+// Route::get('/ask', function () {
+//     $q = request('q', 'Explain Laravel in simple words');
 
-    // Chatbot (student only)
-    Route::get('/chat', [ChatController::class, 'index']);
-    Route::post('/chat', [ChatController::class, 'send']);
-    Route::post('/chat/clear', [ChatController::class, 'clear']);
-});
+//     try {
+//         $res = Http::connectTimeout(10)
+//             ->timeout(180) // 3 minutes
+//             ->post(env('OLLAMA_URL') . '/api/generate', [
+//                 'model' => env('OLLAMA_MODEL'),
+//                 'prompt' => $q,
+//                 'stream' => false,
+//             ]);
 
-/*
-|--------------------------------------------------------------------------
-| Teacher routes (auth + role teacher)
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'role:teacher'])->group(function () {
+//         if (!$res->successful()) {
+//             return response("Ollama error: " . $res->body(), 500);
+//         }
 
-    // Teacher dashboard
-    Route::get('/teacher/dashboard', [TeacherDashboardController::class, 'index'])
-        ->name('teacher.dashboard');
-
-    // Teacher chat monitoring
-    Route::get('/teacher/chats', [TeacherChatController::class, 'index']);
-    Route::get('/teacher/chats/{sessionId}', [TeacherChatController::class, 'show']);
-});
+//         $json = $res->json();
+//         return $json['response'] ?? 'No response field';
+//     } catch (\Throwable $e) {
+//         return response("Request failed: " . $e->getMessage(), 500);
+//     }
+// });
